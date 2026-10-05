@@ -3,13 +3,23 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: AgriSmart crop advisory and field management API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: fields
+    description: Farmer-owned field records and soil metrics
+  - name: advisories
+    description: AI-generated crop health and management reports
+  - name: chat
+    description: Context-aware agronomist conversations
+  - name: dashboard
+    description: Farm overview and recent activity
+  - name: settings
+    description: User preferences
 paths:
   /healthz:
     get:
@@ -24,6 +34,299 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /dashboard:
+    get:
+      operationId: getDashboard
+      tags: [dashboard]
+      summary: Get the current user's farm overview
+      responses:
+        "200":
+          description: Dashboard totals and recent advisory activity
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+        "401":
+          description: Authentication required
+  /fields:
+    get:
+      operationId: listFields
+      tags: [fields]
+      summary: List the current user's fields
+      responses:
+        "200":
+          description: Fields owned by the current user
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FarmField"
+        "401":
+          description: Authentication required
+    post:
+      operationId: createField
+      tags: [fields]
+      summary: Create a field
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FieldInput"
+      responses:
+        "201":
+          description: Created field
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FarmField"
+        "400":
+          description: Invalid field data
+        "401":
+          description: Authentication required
+  /fields/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: getField
+      tags: [fields]
+      summary: Get a field with its latest soil reading and advisory history
+      responses:
+        "200":
+          description: Field detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FieldDetail"
+        "404":
+          description: Field not found
+    patch:
+      operationId: updateField
+      tags: [fields]
+      summary: Update a field
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FieldUpdate"
+      responses:
+        "200":
+          description: Updated field
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FarmField"
+        "400":
+          description: Invalid field data
+        "404":
+          description: Field not found
+    delete:
+      operationId: deleteField
+      tags: [fields]
+      summary: Delete a field and its associated records
+      responses:
+        "204":
+          description: Field deleted
+        "404":
+          description: Field not found
+  /fields/{id}/soil-metrics:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: listSoilMetrics
+      tags: [fields]
+      summary: List soil test history for a field
+      responses:
+        "200":
+          description: Soil test readings in newest-first order
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SoilMetric"
+        "404":
+          description: Field not found
+    post:
+      operationId: addSoilMetric
+      tags: [fields]
+      summary: Record a soil test for a field
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SoilMetricInput"
+      responses:
+        "201":
+          description: Recorded soil test
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SoilMetric"
+        "400":
+          description: Invalid soil metrics
+        "404":
+          description: Field not found
+  /advisories:
+    get:
+      operationId: listAdvisories
+      tags: [advisories]
+      summary: List the current user's recent advisories
+      responses:
+        "200":
+          description: Recent advisory reports
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdvisoryListItem"
+        "401":
+          description: Authentication required
+  /advisories/generate:
+    post:
+      operationId: generateAdvisory
+      tags: [advisories]
+      summary: Analyze field conditions and save an AI advisory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdvisoryInput"
+      responses:
+        "201":
+          description: Generated and saved advisory report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdvisoryReport"
+        "400":
+          description: Invalid advisory input
+        "401":
+          description: Authentication required
+        "404":
+          description: Field not found
+        "502":
+          description: The AI provider returned an invalid response
+  /advisories/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: getAdvisory
+      tags: [advisories]
+      summary: Get a saved advisory report
+      responses:
+        "200":
+          description: Advisory report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdvisoryReport"
+        "404":
+          description: Advisory not found
+  /chat/history:
+    get:
+      operationId: getChatHistory
+      tags: [chat]
+      summary: Get recent chat history, optionally for one field
+      parameters:
+        - name: fieldId
+          in: query
+          required: false
+          schema:
+            type: ["string", "null"]
+            format: uuid
+      responses:
+        "200":
+          description: Chat messages in chronological order
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChatMessage"
+        "401":
+          description: Authentication required
+  /chat/message:
+    post:
+      operationId: sendChatMessage
+      tags: [chat]
+      summary: Ask the AI agronomist a question
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatInput"
+      responses:
+        "200":
+          description: Saved user and assistant messages
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatReply"
+        "400":
+          description: Invalid chat message
+        "401":
+          description: Authentication required
+        "404":
+          description: Field not found
+        "502":
+          description: The AI provider could not answer
+  /settings:
+    get:
+      operationId: getSettings
+      tags: [settings]
+      summary: Get user preferences
+      responses:
+        "200":
+          description: User preferences
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserSettings"
+        "401":
+          description: Authentication required
+    patch:
+      operationId: updateSettings
+      tags: [settings]
+      summary: Update user preferences
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SettingsUpdate"
+      responses:
+        "200":
+          description: Updated user preferences
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserSettings"
+        "400":
+          description: Invalid preferences
+        "401":
+          description: Authentication required
 components:
   schemas:
     HealthStatus:
@@ -33,4 +336,208 @@ components:
           type: string
       required:
         - status
+    FarmField:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        fieldName: { type: string }
+        location: { type: string }
+        areaAcres: { type: number }
+        soilType: { type: string }
+        currentCrop: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required: [id, fieldName, location, areaAcres, soilType, currentCrop, createdAt, updatedAt]
+    FieldInput:
+      type: object
+      properties:
+        fieldName: { type: string, minLength: 1, maxLength: 100 }
+        location: { type: string, minLength: 1, maxLength: 255 }
+        areaAcres: { type: number, exclusiveMinimum: 0, maximum: 10000000 }
+        soilType: { type: string, minLength: 1, maxLength: 50 }
+        currentCrop:
+          type: string
+          enum: [Rice, Wheat, Maize, Cotton, Sugarcane, Soybean, Tomato, Potato, Groundnut]
+      required: [fieldName, location, areaAcres, soilType, currentCrop]
+    FieldUpdate:
+      type: object
+      properties:
+        fieldName: { type: string, minLength: 1, maxLength: 100 }
+        location: { type: string, minLength: 1, maxLength: 255 }
+        areaAcres: { type: number, exclusiveMinimum: 0, maximum: 10000000 }
+        soilType: { type: string, minLength: 1, maxLength: 50 }
+        currentCrop:
+          type: string
+          enum: [Rice, Wheat, Maize, Cotton, Sugarcane, Soybean, Tomato, Potato, Groundnut]
+    SoilMetric:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        fieldId: { type: string, format: uuid }
+        nitrogen: { type: number }
+        phosphorus: { type: number }
+        potassium: { type: number }
+        phLevel: { type: number }
+        organicCarbon: { type: ["number", "null"] }
+        unit: { type: string, enum: [kg/ha, ppm] }
+        testDate: { type: string, format: date }
+        createdAt: { type: string, format: date-time }
+      required: [id, fieldId, nitrogen, phosphorus, potassium, phLevel, organicCarbon, unit, testDate, createdAt]
+    SoilMetricInput:
+      type: object
+      properties:
+        nitrogen: { type: number, minimum: 0, maximum: 100000 }
+        phosphorus: { type: number, minimum: 0, maximum: 100000 }
+        potassium: { type: number, minimum: 0, maximum: 100000 }
+        phLevel: { type: number, minimum: 3.5, maximum: 10 }
+        organicCarbon: { type: ["number", "null"], minimum: 0, maximum: 100 }
+        unit: { type: string, enum: [kg/ha, ppm] }
+        testDate: { type: string, format: date }
+      required: [nitrogen, phosphorus, potassium, phLevel, unit, testDate]
+    AdvisoryListItem:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        fieldId: { type: string, format: uuid }
+        fieldName: { type: string }
+        currentCrop: { type: string }
+        cropStage: { type: string }
+        healthScore: { type: integer, minimum: 0, maximum: 100 }
+        summary: { type: string }
+        createdAt: { type: string, format: date-time }
+      required: [id, fieldId, fieldName, currentCrop, cropStage, healthScore, summary, createdAt]
+    FieldDetail:
+      type: object
+      properties:
+        field: { $ref: "#/components/schemas/FarmField" }
+        latestSoilMetric:
+          oneOf:
+            - $ref: "#/components/schemas/SoilMetric"
+            - type: "null"
+        recentAdvisories:
+          type: array
+          items: { $ref: "#/components/schemas/AdvisoryListItem" }
+      required: [field, latestSoilMetric, recentAdvisories]
+    NutrientDeficiency:
+      type: object
+      properties:
+        nutrient: { type: string }
+        severity: { type: string, enum: [Low, Moderate, Critical] }
+        recommendation: { type: string }
+      required: [nutrient, severity, recommendation]
+    FertilizerRecommendation:
+      type: object
+      properties:
+        fertilizerName: { type: string }
+        applicationRateKgPerAcre: { type: number, minimum: 0 }
+        applicationMethod: { type: string, enum: [Broadcast, Fertigation, Foliar Spray, Band Placement] }
+        timing: { type: string }
+      required: [fertilizerName, applicationRateKgPerAcre, applicationMethod, timing]
+    PestDiseaseRisk:
+      type: object
+      properties:
+        threatName: { type: string }
+        riskLevel: { type: string, enum: [Low, Medium, High] }
+        preventativeAction: { type: string }
+      required: [threatName, riskLevel, preventativeAction]
+    AdvisoryReport:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        fieldId: { type: string, format: uuid }
+        fieldName: { type: string }
+        currentCrop: { type: string }
+        cropStage: { type: string }
+        healthScore: { type: integer, minimum: 0, maximum: 100 }
+        summary: { type: string }
+        nutrientDeficiencies:
+          type: array
+          items: { $ref: "#/components/schemas/NutrientDeficiency" }
+        fertilizerPlan:
+          type: array
+          items: { $ref: "#/components/schemas/FertilizerRecommendation" }
+        pestDiseaseRisks:
+          type: array
+          items: { $ref: "#/components/schemas/PestDiseaseRisk" }
+        irrigationAdvice: { type: string }
+        estimatedYieldImpact: { type: string }
+        createdAt: { type: string, format: date-time }
+      required: [id, fieldId, fieldName, currentCrop, cropStage, healthScore, summary, nutrientDeficiencies, fertilizerPlan, pestDiseaseRisks, irrigationAdvice, estimatedYieldImpact, createdAt]
+    AdvisoryInput:
+      type: object
+      properties:
+        fieldId: { type: string, format: uuid }
+        cropStage:
+          type: string
+          enum: [Germination, Vegetative, Flowering, Fruiting, Maturity/Harvest]
+        nitrogen: { type: number, minimum: 0, maximum: 100000 }
+        phosphorus: { type: number, minimum: 0, maximum: 100000 }
+        potassium: { type: number, minimum: 0, maximum: 100000 }
+        phLevel: { type: number, minimum: 3.5, maximum: 10 }
+        organicCarbon: { type: ["number", "null"], minimum: 0, maximum: 100 }
+        unit: { type: string, enum: [kg/ha, ppm] }
+        notes: { type: string, maxLength: 3000 }
+        weather:
+          oneOf:
+            - $ref: "#/components/schemas/WeatherInput"
+            - type: "null"
+      required: [fieldId, cropStage, nitrogen, phosphorus, potassium, phLevel, unit]
+    WeatherInput:
+      type: object
+      properties:
+        temperatureC: { type: number, minimum: -30, maximum: 65 }
+        humidityPercent: { type: number, minimum: 0, maximum: 100 }
+        rainfallMm: { type: number, minimum: 0, maximum: 10000 }
+        windKph: { type: number, minimum: 0, maximum: 500 }
+    DashboardSummary:
+      type: object
+      properties:
+        activeFields: { type: integer, minimum: 0 }
+        totalAreaAcres: { type: number, minimum: 0 }
+        averageHealthScore: { type: ["number", "null"], minimum: 0, maximum: 100 }
+        healthAlerts: { type: integer, minimum: 0 }
+        recentAdvisories:
+          type: array
+          items: { $ref: "#/components/schemas/AdvisoryListItem" }
+      required: [activeFields, totalAreaAcres, averageHealthScore, healthAlerts, recentAdvisories]
+    ChatMessage:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        fieldId:
+          oneOf:
+            - type: string
+              format: uuid
+            - type: "null"
+        role: { type: string, enum: [user, assistant] }
+        content: { type: string }
+        createdAt: { type: string, format: date-time }
+      required: [id, fieldId, role, content, createdAt]
+    ChatInput:
+      type: object
+      properties:
+        fieldId:
+          oneOf:
+            - type: string
+              format: uuid
+            - type: "null"
+        content: { type: string, minLength: 1, maxLength: 4000 }
+      required: [content]
+    ChatReply:
+      type: object
+      properties:
+        userMessage: { $ref: "#/components/schemas/ChatMessage" }
+        assistantMessage: { $ref: "#/components/schemas/ChatMessage" }
+      required: [userMessage, assistantMessage]
+    UserSettings:
+      type: object
+      properties:
+        units: { type: string, enum: [metric, imperial] }
+        region: { type: ["string", "null"], maxLength: 100 }
+      required: [units, region]
+    SettingsUpdate:
+      type: object
+      properties:
+        units: { type: string, enum: [metric, imperial] }
+        region: { type: ["string", "null"], maxLength: 100 }
 

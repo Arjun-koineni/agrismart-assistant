@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 56">
+  <rect width="56" height="56" rx="17" fill="#2d604a"/>
+  <path d="M28 42V22m0 10c-8 0-12-5-12-11 7 0 12 4 12 11Zm0-5c0-8 5-13 12-13 0 7-4 13-12 13Z" fill="none" stroke="#f2cf76" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="68" y="37" fill="#254b3a" font-family="DM Sans, sans-serif" font-size="27" font-weight="700">agri<tspan fill="#748b50">smart</tspan></text>
+</svg>
