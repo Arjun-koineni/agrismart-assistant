@@ -1,0 +1,397 @@
+MASTER PROMPT: AI-Powered Agriculture Crop Advisory Assistant
+1. Header & System Persona Role
+Role: Principal Full-Stack AI Systems Architect & Lead Software Engineer.
+
+Context: You are building a production-grade, end-to-end, full-stack web application named AgriSmart Crop Advisory Assistant.
+
+Execution Style: Write complete, robust, self-contained, and production-ready code. Do not use placeholders, shorthand, comments like // TODO: implement later, or truncated code blocks. Every file must be fully realized with error handling, strict typing, and security best practices.
+
+2. Core Mission Directive
+Build a comprehensive, intelligent agricultural advisory platform that empowers farmers, agronomists, and agricultural extension officers to make data-driven crop management decisions. The application leverages Google's Gemini models (@google/genai SDK) to deliver real-time crop health diagnostics, yield predictions, fertilizer recommendations, pest/disease mitigation strategies, and localized weather-integrated advisory plans based on structured soil, climate, and crop parameters.
+
+3. Product Goal
+Provide an intuitive, lightning-fast, and deeply functional SaaS-grade web platform where users can:
+
+Input field conditions (soil metrics, NPK values, pH, historical weather, crop type, and growth stage).
+
+Receive structured, AI-generated multi-parameter crop advisory reports with actionable treatments, dosage calculations, and economic forecasts.
+
+Manage farm profiles, track historical advisories, and export professional PDF/JSON agronomic reports.
+
+Interact with an embedded conversational AI agronomist assistant for real-time troubleshooting.
+
+4. Mandatory Features
+AI Crop Diagnostics & Advisory Engine: Multi-modal or structured input analysis yielding comprehensive health scores, risk assessments, and targeted interventions using @google/genai.
+
+Interactive Farm & Field Management Dashboard: CRUD operations for fields, real-time soil metric tracking, and historical log analysis.
+
+Smart Fertilization & Irrigation Calculator: Automated calculation of NPK deficits, water requirements based on evapotranspiration estimates, and scheduling.
+
+Conversational Agronomist Chatbot: Context-aware RAG-ready chat interface powered by Gemini for answering nuanced crop health questions.
+
+Report Generation & Export: Clean, printable summary views and downloadable structured reports.
+
+Secure Authentication & Role-Based Access: Session-based/Token-based authentication with strict Row Level Security (RLS) ensuring farmers only access their respective fields and advisories.
+
+5. Technology Requirements
+Frontend: React.js (Vite), Tailwind CSS, Lucide React (icons), React Router, Zod (form validation).
+
+Backend: Node.js, Express.js, TypeScript/ES Modules.
+
+Database: Replit Postgres (or standard PostgreSQL) with native SQL migrations.
+
+AI SDK: @google/genai (latest official SDK utilizing gemini-2.5-flash or gemini-2.5-pro for structured JSON generation and chat).
+
+Validation & Security: Zod schemas for end-to-end type safety across API boundaries, Helmet, CORS, Rate Limiting.
+
+6. Application Pages (Routes)
+/ - Landing Page: Value proposition, feature highlights, call to action.
+
+/dashboard - Overview Dashboard: Summary metrics (active fields, recent advisories, health alerts).
+
+/fields - Field Management: List, create, update, and delete farm fields with spatial/soil metadata.
+
+/fields/:id - Field Detail & History: Deep dive into specific field metrics and past advisory reports.
+
+/advisory/new - New Advisory Generator: Multi-step wizard to input parameters and trigger Gemini AI analysis.
+
+/advisory/:id - Advisory Report View: Detailed breakdown of AI recommendations, fertilizer schedules, and risk factors.
+
+/chat - AI Agronomist Chat: Dedicated conversational interface with history persistence.
+
+/settings - User Profile & Preferences: Unit preferences (metric/imperial), regional defaults.
+
+7. User Flow
+Onboarding / Authentication: User signs up or logs in securely.
+
+Field Setup: User registers a new field specifying location, soil type, total acreage, and current crop.
+
+Advisory Generation: User initiates an advisory, inputs current soil test metrics (N, P, K, pH) and notes any observed symptoms or weather anomalies.
+
+AI Processing: Backend validates input via Zod, constructs a strict prompt with JSON schema enforcement, queries Gemini via @google/genai, and validates the output.
+
+Review & Action: User reviews the generated advisory report (fertilizer plan, pest risk, irrigation schedule), saves it to the database, and can query the AI chat for follow-up clarifications.
+
+8. Target Domains & Categorization
+Soil Health: Nitrogen, Phosphorus, Potassium (NPK), Organic Carbon, pH levels, Electrical Conductivity (EC).
+
+Crop Stages: Germination, Vegetative, Flowering, Fruiting, Maturity/Harvest.
+
+Pest & Disease Categories: Fungal, Bacterial, Viral, Insect Infestation, Nutrient Deficiency, Environmental Stress.
+
+Climate Factors: Temperature range, Relative Humidity, Rainfall accumulation, Wind speed.
+
+9. Form & Advisory Configuration
+Soil pH Range: 3.5 to 10.0
+
+NPK Input Units: kg/ha or ppm (automatically normalized by backend).
+
+Supported Core Crops: Rice, Wheat, Maize, Cotton, Sugarcane, Soybean, Tomato, Potato, Groundnut.
+
+Advisory Tone: Professional, authoritative, actionable, safety-conscious (emphasizing local agricultural extension guidelines and responsible chemical handling).
+
+10. Database Schema (Production SQL for PostgreSQL)
+SQL
+-- Enable UUID extension
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- Users Table
+CREATE TABLE users (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    full_name VARCHAR(100) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Fields Table
+CREATE TABLE fields (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    field_name VARCHAR(100) NOT NULL,
+    location VARCHAR(255) NOT NULL,
+    area_acres NUMERIC(10, 2) NOT NULL,
+    soil_type VARCHAR(50) NOT NULL,
+    current_crop VARCHAR(100) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Soil Metrics Table
+CREATE TABLE soil_metrics (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    field_id UUID NOT NULL REFERENCES fields(id) ON DELETE CASCADE,
+    nitrogen NUMERIC(8, 2) NOT NULL,
+    phosphorus NUMERIC(8, 2) NOT NULL,
+    potassium NUMERIC(8, 2) NOT NULL,
+    ph_level NUMERIC(4, 2) NOT NULL,
+    organic_carbon NUMERIC(5, 2),
+    test_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Advisories Table
+CREATE TABLE advisories (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    field_id UUID NOT NULL REFERENCES fields(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    crop_stage VARCHAR(50) NOT NULL,
+    health_score INTEGER CHECK (health_score BETWEEN 0 AND 100),
+    summary TEXT NOT NULL,
+    raw_ai_response JSONB NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Chat History Table
+CREATE TABLE chat_messages (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    field_id UUID REFERENCES fields(id) ON DELETE SET NULL,
+    role VARCHAR(20) CHECK (role IN ('user', 'model')) NOT NULL,
+    content TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Indexes for performance
+CREATE INDEX idx_fields_user_id ON fields(user_id);
+CREATE INDEX idx_soil_metrics_field_id ON soil_metrics(field_id);
+CREATE INDEX idx_advisories_field_id ON advisories(field_id);
+CREATE INDEX idx_chat_messages_user_id ON chat_messages(user_id);
+11. Row Level Security (RLS) / Data Isolation Rules
+Ensure multi-tenant data security at the database and application layer:
+
+Application Layer: All queries involving fields, advisories, and chat logs must explicitly filter by the authenticated session's user_id.
+
+Database Layer (RLS Policies):
+
+SQL
+ALTER TABLE fields ENABLE ROW LEVEL SECURITY;
+ALTER TABLE soil_metrics ENABLE ROW LEVEL SECURITY;
+ALTER TABLE advisories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE chat_messages ENABLE ROW LEVEL SECURITY;
+
+-- Example policy for fields (assuming current_setting('request.jwt.claim.sub', true) maps to user id or handled via app middleware)
+CREATE POLICY user_isolation_fields ON fields
+    FOR ALL
+    USING (user_id = NULLIF(current_setting('app.current_user_id', true), '')::UUID);
+12. Backend API Routes
+POST /api/auth/register - Register a new user.
+
+POST /api/auth/login - Authenticate and issue session/token.
+
+GET /api/fields - List all fields for the authenticated user.
+
+POST /api/fields - Create a new field.
+
+GET /api/fields/:id - Get field details and latest metrics.
+
+PUT /api/fields/:id - Update field details.
+
+DELETE /api/fields/:id - Delete a field.
+
+POST /api/advisories/generate - Trigger Gemini AI analysis for a field based on soil metrics and crop stage.
+
+GET /api/advisories/:id - Retrieve a specific advisory report.
+
+GET /api/chat/history - Retrieve conversational history.
+
+POST /api/chat/message - Send a message to the AI agronomist and receive a streamed or synchronous response.
+
+13. Gemini SDK Setup & Server-Side Security
+Initialize the Google GenAI SDK strictly on the backend using process.env.GEMINI_API_KEY.
+
+Never expose the API key to the client.
+
+Use @google/genai client configuration:
+
+JavaScript
+import { GoogleGenAI } from '@google/genai';
+
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+14. AI System Prompt
+"You are an expert Principal Agronomist and Senior AI Agricultural Scientist with 25+ years of field experience across global farming systems. Your objective is to analyze soil test results, environmental data, and crop growth stages to provide precise, scientifically validated, safe, and economically optimal agricultural advisories. Always prioritize sustainable farming practices, precise fertilizer dosing to prevent runoff, integrated pest management (IPM), and clear safety warnings when recommending chemical treatments. Respond strictly in valid JSON format matching the requested schema without markdown wrapping deviations."
+
+15. Detailed AI Prompts (with required JSON Schemas)
+Advisory Generation Prompt Structure:
+JavaScript
+const prompt = `
+Analyze the following agricultural parameters for ${cropName} at the ${cropStage} stage:
+- Soil NPK: N=${nitrogen} kg/ha, P=${phosphorus} kg/ha, K=${potassium} kg/ha
+- Soil pH: ${phLevel}
+- Soil Type: ${soilType}
+- Field Area: ${areaAcres} acres
+- Observed Symptoms / Notes: ${userNotes || 'None provided'}
+
+Provide a comprehensive agronomic assessment.
+`;
+
+// Call configuration with responseSchema enforcement
+const response = await ai.models.generateContent({
+  model: 'gemini-2.5-flash',
+  contents: prompt,
+  config: {
+    systemInstruction: "You are an expert Principal Agronomist...",
+    responseMimeType: 'application/json',
+    responseSchema: {
+      type: "OBJECT",
+      properties: {
+        healthScore: { type: "INTEGER", description: "Overall crop health score from 0 to 100" },
+        summary: { type: "STRING", description: "Executive summary of field condition" },
+        nutrientDeficiencies: {
+          type: "ARRAY",
+          items: {
+            type: "OBJECT",
+            properties: {
+              nutrient: { type: "STRING" },
+              severity: { type: "STRING", enum: ["Low", "Moderate", "Critical"] },
+              recommendation: { type: "STRING" }
+            },
+            required: ["nutrient", "severity", "recommendation"]
+          }
+        },
+        fertilizerPlan: {
+          type: "ARRAY",
+          items: {
+            type: "OBJECT",
+            properties: {
+              fertilizerName: { type: "STRING" },
+              applicationRateKgPerAcre: { type: "NUMBER" },
+              applicationMethod: { type: "STRING", enum: ["Broadcast", "Fertigation", "Foliar Spray", "Band Placement"] },
+              timing: { type: "STRING" }
+            },
+            required: ["fertilizerName", "applicationRateKgPerAcre", "applicationMethod", "timing"]
+          }
+        },
+        pestDiseaseRisks: {
+          type: "ARRAY",
+          items: {
+            type: "OBJECT",
+            properties: {
+              threatName: { type: "STRING" },
+              riskLevel: { type: "STRING", enum: ["Low", "Medium", "High"] },
+              preventativeAction: { type: "STRING" }
+            },
+            required: ["threatName", "riskLevel", "preventativeAction"]
+          }
+        },
+        irrigationAdvice: { type: "STRING" },
+        estimatedYieldImpact: { type: "STRING" }
+      },
+      required: [
+        "healthScore",
+        "summary",
+        "nutrientDeficiencies",
+        "fertilizerPlan",
+        "pestDiseaseRisks",
+        "irrigationAdvice",
+        "estimatedYieldImpact"
+      ]
+    }
+  }
+});
+16. Zod Validation Requirements
+Define strict validation schemas for all incoming API payloads:
+
+TypeScript
+import { z } from 'zod';
+
+export const createFieldSchema = z.object({
+  fieldName: z.string().min(1).max(100),
+  location: z.string().min(1).max(255),
+  areaAcres: z.number().positive(),
+  soilType: z.string().min(1).max(50),
+  currentCrop: z.string().min(1).max(100),
+});
+
+export const soilMetricsSchema = z.object({
+  fieldId: z.string().uuid(),
+  nitrogen: z.number().nonnegative(),
+  phosphorus: z.number().nonnegative(),
+  potassium: z.number().nonnegative(),
+  phLevel: z.number().min(0).max(14),
+  organicCarbon: z.number().optional(),
+  cropStage: z.string().min(1),
+  userNotes: z.string().optional(),
+});
+17. Frontend Components List
+Navbar.tsx & Sidebar.tsx: Core navigation and branding.
+
+FieldCard.tsx: Summary card displaying field stats and health status.
+
+MetricBadge.tsx: Visual badge for NPK and pH values with optimal ranges.
+
+AdvisoryReportView.tsx: Structured layout rendering AI output graphs, tables, and action items.
+
+ChatInterface.tsx: Real-time chat box with message bubbles and markdown rendering.
+
+LoadingSpinner.tsx & ErrorBoundary.tsx: Robust UI fallback states.
+
+18. Security Requirements
+Helmet.js: Set secure HTTP headers on Express backend.
+
+CORS Policy: Restrict API access to trusted frontend origins.
+
+Rate Limiting: Protect AI generation endpoints against abuse using express-rate-limit.
+
+Input Sanitization: Use Zod for validation and parameterized SQL queries to prevent SQL injection.
+
+Environment Isolation: Strictly keep API keys in server-side .env.
+
+19. Environment Variables Template
+Code snippet
+PORT=5000
+DATABASE_URL=postgresql://user:password@localhost:5432/agrismart
+GEMINI_API_KEY=AIzaSy_YourActualGeminiApiKeyHere
+JWT_SECRET=super_secret_jwt_key_change_in_production
+NODE_ENV=development
+20. Suggested Folder Structure
+Plaintext
+agrismart-assistant/
+├── client/                      # React Frontend (Vite)
+│   ├── public/
+│   ├── src/
+│   │   ├── components/         # Reusable UI components
+│   │   ├── pages/              # Route views (Dashboard, Fields, Advisory, Chat)
+│   │   ├── services/           # API client (Axios/Fetch)
+│   │   ├── App.tsx
+│   │   └── main.tsx
+│   ├── package.json
+│   └── tailwind.config.js
+├── server/                      # Node.js + Express Backend
+│   ├── config/                 # DB & Gemini initialization
+│   ├── controllers/            # Business logic handlers
+│   ├── middleware/             # Auth, error handling, rate limiters
+│   ├── routes/                 # API route definitions
+│   ├── schemas/                # Zod validation schemas
+│   ├── server.js               # Entry point
+│   └── package.json
+├── database/
+│   └── schema.sql              # Production SQL DDL
+└── .env.example
+21. Implementation Phases
+Phase 1: Project scaffolding, database schema migration, and environment setup.
+
+Phase 2: Backend core authentication, field CRUD operations, and soil metric logging.
+
+Phase 3: Gemini SDK integration, structured JSON schema configuration, and advisory generation endpoint.
+
+Phase 4: Frontend UI development (Dashboard, Field management, Advisory wizard, and Report view).
+
+Phase 5: Conversational AI agronomist chat implementation and history persistence.
+
+Phase 6: Security hardening, error boundary integration, and final testing.
+
+22. Acceptance Criteria
+Users can seamlessly register, log in, create fields, and record soil metrics.
+
+Triggering an advisory successfully communicates with Gemini via @google/genai using structured response schemas without parsing errors.
+
+The generated advisory correctly populates health scores, fertilizer schedules, and pest risks in the UI.
+
+Conversational chat maintains contextual history per user/field.
+
+All inputs are strictly validated with Zod, and database queries are fully secured against unauthorized access.
+
+23. Final Instruction to Coding Agent
+Begin execution immediately. Generate all required files across client and server with complete, production-grade code adhering strictly to the specifications above. Do not truncate any code blocks or omit implementation details.

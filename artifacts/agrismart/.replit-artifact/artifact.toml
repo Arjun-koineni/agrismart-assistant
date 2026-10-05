@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "AgriSmart Crop Advisory"
+description = "A crop advisory and field-management application for farmers and agricultural advisers, with protected field records, AI-generated agronomic guidance, chat, and shareable reports."
+version = "1.0.0"
+id = "artifacts/agrismart"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 19937
+
+[services.development]
+run = "pnpm --filter @workspace/agrismart run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/agrismart", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/agrismart/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19937"
+BASE_PATH = "/"
